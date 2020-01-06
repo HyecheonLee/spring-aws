@@ -16,12 +16,7 @@ import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -175,6 +170,21 @@ class PostApiControllerTest {
 
         //then
         assertThat(responseEntity.getBody()).isEqualTo(new PostResponseDto(savedPost));
+    }
+
+    @DisplayName("posts를 삭제하면 db값을 제거한다..")
+    @Test
+    void post_delete() {
+        //given
+        final var post = getPost();
+        final var savedPost = postRepository.save(post);
+
+        //when
+        final var responseEntity = restTemplate.exchange(apiUrl + "/" + savedPost.getId(), HttpMethod.DELETE, HttpEntity.EMPTY, String.class);
+
+        //then
+        final var posts = postRepository.findAll();
+        assertThat(posts.size()).isZero();
     }
 
     private PostSaveRequestDto getPostSaveRequestDto() {

@@ -29,4 +29,8 @@ public class PostService {
     public PostResponseDto getById(Long id) {
         return new PostResponseDto(postRepository.findById(id).orElseThrow(() -> new NotFoundException("[ id : " + id + "] 를 찾을수 없습니다.")));
     }
+
+    public void deleteById(Long id) {
+        postRepository.deleteById(id);
+    }
 }
