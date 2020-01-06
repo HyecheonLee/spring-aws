@@ -1,94 +1,195 @@
 package com.hyecheon.web;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyecheon.domain.post.Post;
-import com.hyecheon.service.post.PostService;
+import com.hyecheon.domain.post.PostRepository;
 import com.hyecheon.web.dto.PostResponseDto;
 import com.hyecheon.web.dto.PostSaveRequestDto;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
-import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.filter.CharacterEncodingFilter;
+import org.springframework.transaction.annotation.Transactional;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
 
 @ExtendWith(SpringExtension.class)
-@WebMvcTest(PostApiControllerTest.class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class PostApiControllerTest {
 
-    private MockMvc mockMvc;
+    @LocalServerPort
+    private int port;
 
     @Autowired
-    private WebApplicationContext ctx;
-
-    @MockBean
-    private PostService postService;
+    private TestRestTemplate restTemplate;
+    @Autowired
+    private PostRepository postRepository;
+    private String apiUrl;
 
     @BeforeEach
     void setUp() {
-        this.mockMvc = MockMvcBuilders.webAppContextSetup(ctx)
-                .addFilters(new CharacterEncodingFilter("UTF-8", true))  // 필터 추가
-                .alwaysDo(print())
+        apiUrl = "http://localhost:" + port + "/api/v1/posts";
+    }
+
+    @AfterEach
+    void tearDown() {
+        postRepository.deleteAll();
+    }
+
+    @DisplayName("posts를 등록하면 201 코드를 받는다")
+    @Test
+    void post_save() throws Exception {
+        final PostSaveRequestDto requestDto = getPostSaveRequestDto();
+        //when
+        final var responseEntity = restTemplate.postForEntity(apiUrl, requestDto, Object.class);
+        //then
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
+    @DisplayName("posts를 등록하면 location URI가 null 이 아니다.")
+    @Test
+    void post_save2() throws Exception {
+        final PostSaveRequestDto requestDto = getPostSaveRequestDto();
+        //when
+        final var responseEntity = restTemplate.postForEntity(apiUrl, requestDto, Object.class);
+        //then
+        assertThat(responseEntity.getHeaders().getLocation()).isNotNull();
+    }
+
+    @DisplayName("posts를 등록하면 body를 확인한다.")
+    @Test
+    void post_save3() throws Exception {
+        final PostSaveRequestDto requestDto = getPostSaveRequestDto();
+        //when
+        final var responseEntity = restTemplate.postForEntity(apiUrl, requestDto, PostResponseDto.class);
+        //then
+        assertThat(responseEntity.getBody().getContent()).isEqualTo(requestDto.getContent());
+        assertThat(responseEntity.getBody().getTitle()).isEqualTo(requestDto.getTitle());
+    }
+
+    @DisplayName("posts를 등록하면 db에 저장된 갯수가 1개이다.")
+    @Test
+    void post_save4() throws Exception {
+        final PostSaveRequestDto requestDto = getPostSaveRequestDto();
+        //when
+        restTemplate.postForEntity(apiUrl, requestDto, PostResponseDto.class);
+
+        //then
+        final var posts = postRepository.findAll();
+        assertThat(posts.size()).isEqualTo(1);
+    }
+
+    @DisplayName("posts를 등록하면 db에 저장된 데이터가 같다.")
+    @Test
+    void post_save5() throws Exception {
+        final PostSaveRequestDto requestDto = getPostSaveRequestDto();
+        //when
+        restTemplate.postForEntity(apiUrl, requestDto, PostResponseDto.class);
+
+        //then
+        final var posts = postRepository.findAll();
+        final var post = posts.get(0);
+        assertThat(post.getTitle()).isEqualTo(requestDto.getTitle());
+        assertThat(post.getContent()).isEqualTo(requestDto.getContent());
+    }
+
+    @DisplayName("posts를 업데이트하면 200 코드를 받는다.")
+    @Test
+    void post_update1() {
+        //given
+        final var post = getPost();
+        final var savedPost = postRepository.save(post);
+        final var postSaveRequestDto = getPostSaveRequestDto();
+
+        //when
+        final var responseEntity = restTemplate.exchange(apiUrl + "/" + savedPost.getId(), HttpMethod.PUT, new HttpEntity<>(postSaveRequestDto), PostResponseDto.class);
+
+        //then
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @DisplayName("posts id가 숫자 아닌 값은 404 코드를 받는다.")
+    @Test
+    void post_update2() {
+        //when
+        final var responseEntity = restTemplate.exchange(apiUrl + "/aa", HttpMethod.PUT, new HttpEntity<>(""), PostResponseDto.class);
+
+        //then
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @DisplayName("posts를 업데이트 하면 db 값이 업데이트 된다.")
+    @Test
+    void post_update3() {
+        //given
+        final var post = getPost();
+        final var savedPost = postRepository.save(post);
+        final var postSaveRequestDto = getPostSaveRequestDto();
+
+        //when
+        restTemplate.exchange(apiUrl + "/" + savedPost.getId(), HttpMethod.PUT, new HttpEntity<>(postSaveRequestDto), PostResponseDto.class);
+
+        //then
+        final var updatedPost = postRepository.findById(savedPost.getId()).get();
+        assertThat(updatedPost.getContent()).isEqualTo(postSaveRequestDto.getContent());
+        assertThat(updatedPost.getTitle()).isEqualTo(postSaveRequestDto.getTitle());
+        assertThat(updatedPost.getAuthor()).isEqualTo(postSaveRequestDto.getAuthor());
+    }
+
+    @DisplayName("posts를 조회하면 200 코드를 받는다")
+    @Test
+    void post_get() {
+        //given
+        final var post = getPost();
+        final var savedPost = postRepository.save(post);
+
+        //when
+        final var responseEntity = restTemplate.getForEntity(apiUrl + "/" + savedPost.getId(), PostResponseDto.class);
+
+        //then
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @DisplayName("posts를 조회하면 db값과 동일한 값을 받는다.")
+    @Test
+    void post_get2() {
+        //given
+        final var post = getPost();
+        final var savedPost = postRepository.save(post);
+
+        //when
+        final var responseEntity = restTemplate.getForEntity(apiUrl + "/" + savedPost.getId(), PostResponseDto.class);
+
+        //then
+        assertThat(responseEntity.getBody()).isEqualTo(new PostResponseDto(savedPost));
+    }
+
+    private PostSaveRequestDto getPostSaveRequestDto() {
+        return PostSaveRequestDto.builder()
+                .title("title-post-request")
+                .content("content-post-request")
+                .author("author-post-request")
                 .build();
     }
 
-    @Test
-    void post_등록() throws Exception {
-        String title = "title";
-        String content = "content";
-        final PostSaveRequestDto requestDto = PostSaveRequestDto.builder()
-                .title(title)
-                .content(content)
+    private Post getPost() {
+        return Post.builder()
+                .title("title")
+                .content("content")
+                .author("author")
                 .build();
-        ObjectMapper mapper = new ObjectMapper();
-        final String requestBody = mapper.writeValueAsString(requestDto);
-        when(postService.save(any())).thenReturn(PostResponseDto.builder().id(1L).build());
-        mockMvc.perform(post("/api/v1/posts")
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(requestBody))
-                .andExpect(status().isCreated());
-        verify(postService).save(any());
-    }
-
-    @Test
-    void post_조회() throws Exception {
-        mockMvc.perform(get("/api/v1/posts/1"))
-                .andExpect(status().isOk());
-        verify(postService).getById(1L);
-    }
-
-
-    @Test
-    void post_조회_ID_숫자가아닐때_404에러() throws Exception {
-        mockMvc.perform(get("/api/v1/posts/a"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Configuration
-    @ComponentScan(basePackageClasses = {PostApiControllerTest.class})
-    public static class TestConf {
     }
 }

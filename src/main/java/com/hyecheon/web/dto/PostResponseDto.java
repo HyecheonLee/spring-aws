@@ -3,10 +3,14 @@ package com.hyecheon.web.dto;
 import com.hyecheon.domain.post.Post;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+@NoArgsConstructor
 @Data
+@EqualsAndHashCode(exclude = {"createdData", "lastModifiedDate"})
 public class PostResponseDto {
     private Long id;
     private String title;

@@ -18,10 +18,16 @@ public class PostApiController {
     private final PostService postService;
 
 
-    @PostMapping()
+    @PostMapping
     public ResponseEntity<?> save(@RequestBody PostSaveRequestDto postSaveRequestDto) {
         final PostResponseDto savePost = postService.save(postSaveRequestDto.toEntity());
         return ResponseEntity.created(URI.create("/api/v1/posts/" + savePost.getId())).body(savePost);
+    }
+
+    @PutMapping("/{id:[0-9]+}")
+    public ResponseEntity<?> save(@PathVariable Long id, @RequestBody PostSaveRequestDto postSaveRequestDto) {
+        final PostResponseDto savePost = postService.save(id, postSaveRequestDto.toEntity());
+        return ResponseEntity.ok().body(savePost);
     }
 
     @GetMapping("/{id:[0-9]+}")
