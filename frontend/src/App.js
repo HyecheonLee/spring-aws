@@ -1,14 +1,18 @@
 import React from 'react';
 import './App.css';
-import {Route} from 'react-router-dom';
+import {Admin, Resource} from 'react-admin';
+import PostList from "./posts/PostList";
+import customDataProvider from "./utils/customDataProvider";
+import PostCreate from "./posts/PostCreate";
+import PostEdit from "./posts/PostEdit";
 
-import PostSaveContainer from "./containers/PostSaveContainer";
+const dataProvider = customDataProvider('/api/v1');
 
 function App() {
   return (
-      <div className="App">
-        <Route path="/posts/save" component={PostSaveContainer}/>
-      </div>
+      <Admin dataProvider={dataProvider}>
+        <Resource name={"posts"} list={PostList} create={PostCreate} edit={PostEdit}/>
+      </Admin>
   );
 }
 
