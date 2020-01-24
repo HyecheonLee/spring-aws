@@ -14,31 +14,32 @@ import javax.persistence.*;
 @Entity
 @Table(name = "posts")
 public class Post extends BaseEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    @Column(length = 500, nullable = false)
-    private String title;
-    @Column(columnDefinition = "TEXT", nullable = false)
-    private String content;
-    private String author;
 
-    @Builder
-    public Post(String title, String content, String author) {
-        this.title = title;
-        this.content = content;
-        this.author = author;
-    }
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+  @Column(length = 500, nullable = false)
+  private String title;
+  @Column(columnDefinition = "TEXT", nullable = false)
+  private String content;
+  private String author;
 
-    public void update(Post post) {
-        if (StringUtils.hasText(post.getContent())) {
-            this.content = post.getContent();
-        }
-        if (StringUtils.hasText(post.getTitle())) {
-            this.title = post.getTitle();
-        }
-        if (StringUtils.hasText(post.getAuthor())) {
-            this.author = post.getAuthor();
-        }
+  @Builder
+  public Post(String title, String content, String author) {
+    this.title = title;
+    this.content = content;
+    this.author = author;
+  }
+
+  public void update(Post post) {
+    if (StringUtils.hasText(post.getContent())) {
+      this.content = post.getContent();
     }
+    if (StringUtils.hasText(post.getTitle())) {
+      this.title = post.getTitle();
+    }
+    if (StringUtils.hasText(post.getAuthor())) {
+      this.author = post.getAuthor();
+    }
+  }
 }
